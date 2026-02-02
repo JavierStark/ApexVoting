@@ -1,6 +1,26 @@
 @ApexVotingApi_HostAddress = http://localhost:5190
 
-GET {{ApexVotingApi_HostAddress}}/weatherforecast/
+GET {{ApexVotingApi_HostAddress}}/leaderboard/
 Accept: application/json
+
+###
+
+POST {{ApexVotingApi_HostAddress}}/votes/
+Content-Type: application/json
+
+{
+    "game": "Apex Legends",
+    "id": "aaa"
+}
+
+###
+
+POST {{ApexVotingApi_HostAddress}}/votes/
+Content-Type: application/json
+
+{
+  "game": "a",
+  "id": "aaa"
+}
 
 ###

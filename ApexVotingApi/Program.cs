@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using StackExchange.Redis;
 
@@ -21,17 +22,20 @@ List<string> games = ["Apex Legends", "Fortnite", "Call of Duty", "Valorant", "O
 
 app.UseHttpsRedirection();
 app.MapGet("/", () => "Welcome to the Apex Voting API!");
-app.MapPost("/votes", (IConnectionMultiplexer redis, [FromBody] string vote) =>
+app.MapPost("/votes", (IConnectionMultiplexer redis, [FromBody] VoteDto voteDto) =>
 {
     var db = redis.GetDatabase();
     
-    if (!games.Contains(vote))
+    if (!games.Contains(voteDto.Game))
     {
         return Results.BadRequest("Invalid game choice.");
     }
     
-    db.StringIncrement(vote);
-    return Results.Ok($"Vote for {vote} recorded.");
+    var payload = JsonSerializer.SerializeToUtf8Bytes(voteDto);
+    
+    db.ListRightPushAsync("votes", payload, When.Always, CommandFlags.FireAndForget);
+
+    return Results.Ok($"Vote for {voteDto.Game} recorded.");
 });
 
 app.MapGet("/leaderboard", (IConnectionMultiplexer redis) =>
@@ -52,3 +56,5 @@ app.MapGet("/leaderboard", (IConnectionMultiplexer redis) =>
 });
 
 app.Run();
+
+public record VoteDto(string Game, string Id);
