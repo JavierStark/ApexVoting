@@ -7,3 +7,6 @@ var api = builder.AddProject<Projects.ApexVotingApi>("apexvotingapi")
     .WithReference(cache);
 
 var app = builder.Build();
+
+
+app.Run();
