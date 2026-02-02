@@ -9,7 +9,7 @@ POST {{ApexVotingApi_HostAddress}}/votes/
 Content-Type: application/json
 
 {
-    "game": "Apex Legends",
+    "game": "Fortnite",
     "id": "aaa"
 }
 
