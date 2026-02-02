@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApexVoting", "ApexVoting\ApexVoting.csproj", "{6A8F8319-1D1C-4FCE-969E-CF1ABD6C684F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApexVotingApi", "ApexVotingApi\ApexVotingApi.csproj", "{602CB942-FCFE-431B-844F-8882B50653A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApexVoting.ServiceDefaults", "ApexVoting.ServiceDefaults\ApexVoting.ServiceDefaults.csproj", "{BF1595D9-F609-49E3-8DDD-55E2F4B25610}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6A8F8319-1D1C-4FCE-969E-CF1ABD6C684F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A8F8319-1D1C-4FCE-969E-CF1ABD6C684F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A8F8319-1D1C-4FCE-969E-CF1ABD6C684F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A8F8319-1D1C-4FCE-969E-CF1ABD6C684F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{602CB942-FCFE-431B-844F-8882B50653A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{602CB942-FCFE-431B-844F-8882B50653A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{602CB942-FCFE-431B-844F-8882B50653A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{602CB942-FCFE-431B-844F-8882B50653A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BF1595D9-F609-49E3-8DDD-55E2F4B25610}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BF1595D9-F609-49E3-8DDD-55E2F4B25610}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BF1595D9-F609-49E3-8DDD-55E2F4B25610}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BF1595D9-F609-49E3-8DDD-55E2F4B25610}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
