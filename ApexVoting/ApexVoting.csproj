@@ -10,6 +10,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\ApexVotingApi\ApexVotingApi.csproj" />
+      <ProjectReference Include="..\ApexVotingProcessor\ApexVotingProcessor.csproj" />
     </ItemGroup>
 
     <ItemGroup>

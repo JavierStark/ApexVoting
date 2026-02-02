@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApexVotingApi", "ApexVoting
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApexVoting.ServiceDefaults", "ApexVoting.ServiceDefaults\ApexVoting.ServiceDefaults.csproj", "{BF1595D9-F609-49E3-8DDD-55E2F4B25610}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ApexVotingProcessor", "ApexVotingProcessor\ApexVotingProcessor.csproj", "{402CD499-102A-4231-8552-3E0D7AB56DD1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{BF1595D9-F609-49E3-8DDD-55E2F4B25610}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BF1595D9-F609-49E3-8DDD-55E2F4B25610}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BF1595D9-F609-49E3-8DDD-55E2F4B25610}.Release|Any CPU.Build.0 = Release|Any CPU
+		{402CD499-102A-4231-8552-3E0D7AB56DD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{402CD499-102A-4231-8552-3E0D7AB56DD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{402CD499-102A-4231-8552-3E0D7AB56DD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{402CD499-102A-4231-8552-3E0D7AB56DD1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
