@@ -1,6 +1,8 @@
+using StackExchange.Redis;
+
 namespace ApexVotingProcessor;
 
-public class Worker(ILogger<Worker> logger) : BackgroundService
+public class Worker(ILogger<Worker> logger, IConnectionMultiplexer redis, ApexVotingDbContext db) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
