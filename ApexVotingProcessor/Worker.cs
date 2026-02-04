@@ -141,6 +141,16 @@ public class Worker(ILogger<Worker> logger, IConnectionMultiplexer redis, IServi
         await db.Votes.AddRangeAsync(votes, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         
+        // Update Redis leaderboard
+        var cache = redis.GetDatabase();
+        var voteCounts = votes.GroupBy(v => v.Candidate)
+                             .Select(g => new { Game = g.Key, Count = g.Count() });
+        
+        foreach (var voteCount in voteCounts)
+        {
+            await cache.StringIncrementAsync(voteCount.Game, voteCount.Count);
+        }
+        
         VotingMetrics.VotesProcessed.Add(votes.Count);
         
         logger.LogInformation(
