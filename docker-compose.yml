@@ -1,0 +1,107 @@
+﻿version: '3.8'
+
+services:
+  # Redis Cache
+  cache:
+    image: redis:7-alpine
+    container_name: apexvoting-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - apexvoting-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:17-alpine
+    container_name: apexvoting-postgres
+    environment:
+      POSTGRES_PASSWORD: P@ssw0rd123!
+      POSTGRES_DB: apexvotingdb
+      POSTGRES_USER: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - apexvoting-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.95.0
+    container_name: apexvoting-otel
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8889:8889"   # Prometheus metrics
+    networks:
+      - apexvoting-network
+    restart: unless-stopped
+
+  # ApexVoting API
+  apexvotingapi:
+    build:
+      context: .
+      dockerfile: ApexVotingApi/Dockerfile
+    container_name: apexvoting-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__cache=cache:6379
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=apexvotingapi
+    ports:
+      - "5000:8080"
+    depends_on:
+      cache:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - apexvoting-network
+    restart: unless-stopped
+
+  # ApexVoting Processor Worker
+  apexvotingprocessor:
+    build:
+      context: .
+      dockerfile: ApexVotingProcessor/Dockerfile
+    container_name: apexvoting-processor
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - ConnectionStrings__cache=cache:6379
+      - ConnectionStrings__apexvotingdb=Host=postgres;Port=5432;Database=apexvotingdb;Username=postgres;Password=P@ssw0rd123!
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_SERVICE_NAME=apexvotingprocessor
+    depends_on:
+      cache:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - apexvoting-network
+    restart: unless-stopped
+
+networks:
+  apexvoting-network:
+    driver: bridge
+
+volumes:
+  postgres-data:

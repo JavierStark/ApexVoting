@@ -1,4 +1,4 @@
-﻿FROM mcr.microsoft.com/dotnet/runtime:10.0 AS base
+﻿FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
 WORKDIR /app
 
@@ -6,6 +6,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["ApexVotingProcessor/ApexVotingProcessor.csproj", "ApexVotingProcessor/"]
+COPY ["ApexVoting.ServiceDefaults/ApexVoting.ServiceDefaults.csproj", "ApexVoting.ServiceDefaults/"]
 RUN dotnet restore "ApexVotingProcessor/ApexVotingProcessor.csproj"
 COPY . .
 WORKDIR "/src/ApexVotingProcessor"

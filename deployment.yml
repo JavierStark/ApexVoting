@@ -1,0 +1,483 @@
+﻿# ApexVoting Kubernetes Deployment
+# This file contains all Kubernetes resources needed to deploy the ApexVoting system
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apexvoting
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: apexvoting
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+# Redis Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: cache
+  namespace: apexvoting
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP
+---
+# PostgreSQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: apexvoting
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:17-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: POSTGRES_DB
+          value: apexvotingdb
+        - name: POSTGRES_USER
+          value: postgres
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+          initialDelaySeconds: 30
+          periodSeconds: 20
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: apexvoting
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+---
+# PostgreSQL PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: apexvoting
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# PostgreSQL Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+  namespace: apexvoting
+type: Opaque
+stringData:
+  password: "P@ssw0rd123!"  # CHANGE THIS IN PRODUCTION!
+---
+# ApexVotingApi Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apexvotingapi
+  namespace: apexvoting
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: apexvotingapi
+  template:
+    metadata:
+      labels:
+        app: apexvotingapi
+    spec:
+      containers:
+      - name: apexvotingapi
+        image: apexvotingapi:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: ASPNETCORE_ENVIRONMENT
+          value: "Production"
+        - name: ASPNETCORE_HTTP_PORTS
+          value: "8080"
+        - name: ASPNETCORE_URLS
+          value: "http://+:8080"
+        - name: ConnectionStrings__cache
+          value: "cache:6379"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector:4317"
+        - name: OTEL_SERVICE_NAME
+          value: "apexvotingapi"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /alive
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+# ApexVotingApi Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: apexvotingapi
+  namespace: apexvoting
+spec:
+  selector:
+    app: apexvotingapi
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8080
+  type: LoadBalancer
+---
+# ApexVotingProcessor Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apexvotingprocessor
+  namespace: apexvoting
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apexvotingprocessor
+  template:
+    metadata:
+      labels:
+        app: apexvotingprocessor
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:17-alpine
+        command: ['sh', '-c']
+        args:
+        - |
+          until pg_isready -h postgres -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready!"
+      - name: wait-for-redis
+        image: redis:7-alpine
+        command: ['sh', '-c']
+        args:
+        - |
+          until redis-cli -h cache ping; do
+            echo "Waiting for Redis..."
+            sleep 2
+          done
+          echo "Redis is ready!"
+      containers:
+      - name: apexvotingprocessor
+        image: apexvotingprocessor:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: DOTNET_ENVIRONMENT
+          value: "Production"
+        - name: ConnectionStrings__cache
+          value: "cache:6379"
+        - name: ConnectionStrings__apexvotingdb
+          valueFrom:
+            secretKeyRef:
+              name: apexvotingdb-connection
+              key: connectionString
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://otel-collector:4317"
+        - name: OTEL_SERVICE_NAME
+          value: "apexvotingprocessor"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "2000m"
+        livenessProbe:
+          httpGet:
+            path: /alive
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+# Database Connection Secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: apexvotingdb-connection
+  namespace: apexvoting
+type: Opaque
+stringData:
+  connectionString: "Host=postgres;Port=5432;Database=apexvotingdb;Username=postgres;Password=P@ssw0rd123!"  # CHANGE THIS IN PRODUCTION!
+---
+# OpenTelemetry Collector (Optional - for observability)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: apexvoting
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    
+    processors:
+      batch:
+        timeout: 10s
+        send_batch_size: 1024
+      
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 512
+    
+    exporters:
+      logging:
+        loglevel: debug
+      
+      # Uncomment and configure for production exporters
+      # prometheus:
+      #   endpoint: "0.0.0.0:8889"
+      # 
+      # otlp:
+      #   endpoint: "your-backend:4317"
+    
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [logging]
+        
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [logging]
+        
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [logging]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: apexvoting
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector-contrib:0.95.0
+        args: ["--config=/conf/otel-collector-config.yaml"]
+        ports:
+        - containerPort: 4317  # OTLP gRPC
+        - containerPort: 4318  # OTLP HTTP
+        - containerPort: 8889  # Prometheus metrics
+        volumeMounts:
+        - name: config
+          mountPath: /conf
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: config
+        configMap:
+          name: otel-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: apexvoting
+spec:
+  selector:
+    app: otel-collector
+  ports:
+  - name: otlp-grpc
+    port: 4317
+    targetPort: 4317
+  - name: otlp-http
+    port: 4318
+    targetPort: 4318
+  - name: prometheus
+    port: 8889
+    targetPort: 8889
+  type: ClusterIP
+---
+## Horizontal Pod Autoscaler for API (Optional)
+#apiVersion: autoscaling/v2
+#kind: HorizontalPodAutoscaler
+#metadata:
+#  name: apexvotingapi-hpa
+#  namespace: apexvoting
+#spec:
+#  scaleTargetRef:
+#    apiVersion: apps/v1
+#    kind: Deployment
+#    name: apexvotingapi
+#  minReplicas: 2
+#  maxReplicas: 10
+#  metrics:
+#  - type: Resource
+#    resource:
+#      name: cpu
+#      target:
+#        type: Utilization
+#        averageUtilization: 70
+#  - type: Resource
+#    resource:
+#      name: memory
+#      target:
+#        type: Utilization
+#        averageUtilization: 80
+#---
+## Horizontal Pod Autoscaler for Processor (Optional)
+#apiVersion: autoscaling/v2
+#kind: HorizontalPodAutoscaler
+#metadata:
+#  name: apexvotingprocessor-hpa
+#  namespace: apexvoting
+#spec:
+#  scaleTargetRef:
+#    apiVersion: apps/v1
+#    kind: Deployment
+#    name: apexvotingprocessor
+#  minReplicas: 1
+#  maxReplicas: 5
+#  metrics:
+#  - type: Resource
+#    resource:
+#      name: cpu
+#      target:
+#        type: Utilization
+#        averageUtilization: 75
+#  - type: Resource
+#    resource:
+#      name: memory
+#      target:
+#        type: Utilization
+#        averageUtilization: 80
