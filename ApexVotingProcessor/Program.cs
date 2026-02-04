@@ -1,7 +1,9 @@
 using ApexVotingProcessor;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddRedisClient(connectionName: "cache");
@@ -11,12 +13,13 @@ builder.Services.AddHostedService<Worker>();
 
 var host = builder.Build();
 
+host.MapDefaultEndpoints();
+
 using (var scope = host.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApexVotingDbContext>();
     db.Database.Migrate();
 }
-
 
 host.Run();
 
