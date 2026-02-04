@@ -18,7 +18,29 @@ host.MapDefaultEndpoints();
 using (var scope = host.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApexVotingDbContext>();
-    db.Database.Migrate();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        logger.LogInformation("Creating database tables if they don't exist...");
+        
+        // Simple SQL to create the Votes table if it doesn't exist
+        db.Database.ExecuteSqlRaw(@"
+            CREATE TABLE IF NOT EXISTS ""Votes"" (
+                ""Id"" TEXT PRIMARY KEY,
+                ""VoterId"" TEXT NOT NULL,
+                ""Candidate"" TEXT NOT NULL,
+                ""Timestamp"" TIMESTAMP WITH TIME ZONE NOT NULL
+            );
+        ");
+        
+        logger.LogInformation("Database tables created successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to create database tables");
+        throw;
+    }
 }
 
 host.Run();
