@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ApexVoting.ServiceDefaults;
 using Microsoft.AspNetCore.Mvc;
 using StackExchange.Redis;
 
@@ -20,7 +21,6 @@ if (app.Environment.IsDevelopment())
 
 List<string> games = ["Apex Legends", "Fortnite", "Call of Duty", "Valorant", "Overwatch"];
 
-app.UseHttpsRedirection();
 app.MapGet("/", () => "Welcome to the Apex Voting API!");
 app.MapPost("/votes", (IConnectionMultiplexer redis, [FromBody] VoteDto voteDto) =>
 {
@@ -34,6 +34,8 @@ app.MapPost("/votes", (IConnectionMultiplexer redis, [FromBody] VoteDto voteDto)
     var payload = JsonSerializer.SerializeToUtf8Bytes(voteDto);
     
     db.ListRightPushAsync("votes", payload, When.Always, CommandFlags.FireAndForget);
+
+    VotingMetrics.VotesIngested.Add(1, new KeyValuePair<string, object?>("game", voteDto.Game));
 
     return Results.Ok($"Vote for {voteDto.Game} recorded.");
 });
